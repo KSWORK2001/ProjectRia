@@ -1,24 +1,9 @@
+import sys
 import speech_recognition as sr
 from gtts import gTTS
 import pygame
 import io
-import subprocess
-
-"""def recognize_wake_word():
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening for wake word...")
-        recognizer.adjust_for_ambient_noise(source)
-        audio = recognizer.listen(source)
-
-    try:
-        wake_word = recognizer.recognize_google(audio).lower()
-        return "hey ria" in wake_word
-    except sr.UnknownValueError:
-        return False
-    except sr.RequestError as e:
-        print(f"Could not request results; {e}")
-        return False"""
+import os
 
 def recognize_speech(timeout=3):
     recognizer = sr.Recognizer()
@@ -34,13 +19,18 @@ def recognize_speech(timeout=3):
         print("Could not understand audio")
         return None
     except sr.RequestError as e:
-        print("Could not request results; {0}".format(e))
+        print(f"Could not request results; {0}".format(e))
         return None
 
 def generate_response(user_input):
-    if "open spotify" in user_input.lower():
-        open_spotify()
+    if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
+        return "See Ya! Have a great day."
+    elif "open spotify" in user_input.lower():
+        open_application("Spotify")
         return "Opening Spotify..."
+    elif "open chrome" in user_input.lower():
+        open_application("Chrome")
+        return "Opening Chrome..."
     elif "how are you" in user_input.lower():
         return "I'm doing well, thank you!"
     elif "what's your name" in user_input.lower():
@@ -50,14 +40,17 @@ def generate_response(user_input):
     else:
         return "I didn't understand that."
 
-def open_spotify():
+def open_application(application_name):
     try:
-        subprocess.Popen(["C:\\Users\\karan\\AppData\\Roaming\\Spotify\\Spotify.exe"])
+        if application_name == "Spotify":
+            os.startfile("C:\\Users\\karan\\AppData\\Roaming\\Spotify\\Spotify.exe")
+        elif application_name == "Chrome":
+            os.startfile("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
     except Exception as e:
-        print(f"Error opening Spotify: {e}")
+        print(f"Error opening {application_name}: {e}")
 
-def speak(text):
-    tts = gTTS(text=text, lang='en')
+def speak(text, lang='en'):
+    tts = gTTS(text=text, lang=lang)
     
     # Convert gTTS response to an audio file-like object
     audio_file = io.BytesIO()
@@ -74,12 +67,19 @@ def speak(text):
 if __name__ == "__main__":
     speak("Hey there! I'm Ria... How can I help you today?")
     
-    while True:
-        #if recognize_wake_word():                                              #Work on Recognizing Wake Word
-        if True:
-            user_input = recognize_speech(timeout=5)
-            if user_input:
-                print("You said:", user_input)
-                response = generate_response(user_input)
-                print("Ria:", response)
-                speak(response)
+    exit_program = False
+    
+    while not exit_program:
+        user_input = recognize_speech(timeout=2)
+        if user_input:
+            print("You said:", user_input)
+            response = generate_response(user_input)
+            print("Ria:", response)
+            speak(response)
+
+            if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
+                exit_program = True
+            elif "open spotify" in user_input.lower():
+                open_application("Spotify")
+            elif "open chrome" in user_input.lower():
+                open_application("Chrome")
