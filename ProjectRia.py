@@ -87,7 +87,7 @@ def get_user_location():
         return None, None, None
 
 def get_weather(lat, lon, api_key):
-    base_url = "https://api.openweathermap.org/data/3.0/onecall"
+    base_url = "https://api.openweathermap.org/data/2.5/onecall"
     params = {
         "lat": lat,
         "lon": lon,
@@ -100,10 +100,26 @@ def get_weather(lat, lon, api_key):
         data = response.json()
 
         if response.status_code == 200:
-            # Process and extract relevant weather information from 'data'
-            # Note: 'data' may contain various weather details for the specified location
-            # Extract the information you need based on your requirements.
-            return "Weather details here"
+            # Extract current weather information
+            current_weather = data['current']
+            
+            # Extract current temperature
+            current_temp = current_weather['temp']
+            
+            # Extract today's weather information
+            today_weather = data['daily'][0]
+
+            # Extract high and low temperatures for today
+            high_temp = today_weather['temp']['max']
+            low_temp = today_weather['temp']['min']
+
+            # Convert temperatures from Kelvin to Celsius (or Fahrenheit if needed)
+            current_temp_celsius = round(current_temp - 273.15, 2)
+            high_temp_celsius = round(high_temp - 273.15, 2)
+            low_temp_celsius = round(low_temp - 273.15, 2)
+
+            # Display the weather details for today
+            return f"Current Temperature: {current_temp_celsius} degree C\nWeather for today: High {high_temp_celsius} degree C, Low {low_temp_celsius} degree C"
         else:
             return f"Error: {data['message']}"
     except Exception as e:
@@ -111,8 +127,7 @@ def get_weather(lat, lon, api_key):
 
 if __name__ == "__main__":
     # Replace 'YOUR_OPENWEATHERMAP_API_KEY' with your actual OpenWeatherMap API key
-    api_key = 'ALREADY PUT THE KEY'
-
+    api_key = 'c39e52218b15fbde02bc0d6cce878e1e'
 
     speak("Hey there! I'm Ria... How can I help you today?")
     
