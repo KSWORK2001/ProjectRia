@@ -6,8 +6,11 @@ import os
 import geocoder
 import requests
 import datetime
+import webbrowser
+from dateutil import parser
+import time
 
-WAKE_WORD = "hey porcupine"  # Set your desired wake word
+WAKE_WORDS = ["hey porcupine", "play porcupine"]
 WAKE_WORD_THRESHOLD = 0.7
 
 def recognize_wake_word():
@@ -20,12 +23,13 @@ def recognize_wake_word():
     try:
         wake_word = recognizer.recognize_google(audio).lower()
         print(f"Detected wake word: {wake_word}")
-        return wake_word.startswith(WAKE_WORD)
+        return any(wake_word.startswith(word) for word in WAKE_WORDS)
     except sr.UnknownValueError:
         return False
     except sr.RequestError as e:
         print(f"Could not request results; {e}")
         return False
+
 
 def recognize_speech(timeout=5, custom_energy_threshold=4000):
     recognizer = sr.Recognizer()
@@ -46,18 +50,27 @@ def recognize_speech(timeout=5, custom_energy_threshold=4000):
         return None
 
 
-
 def generate_response(user_input, api_key):
-    if any(phrase in user_input for phrase in ["goodbye", "bye", "see you", "thank you", "thanks"]):
+    if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
         return "Seeya! Have a great day."
     elif "spotify" in user_input.lower():
         open_application("Spotify")
         return "Opening Spotify..."
-    elif "hey porcupine" in user_input.lower():
-        return "Hey there, how can I be of service?"
     elif any(word in user_input.lower() for word in ["chrome", "browser"]):
         open_application("Chrome")
         return "Opening Chrome..."
+    elif "open google" in user_input.lower():
+        open_application("Chrome", link="https://www.google.com/")
+        return "Google is here"
+    elif "open nexcen" in user_input.lower():
+        open_application("Chrome", link="https://www.nexcenglobal.com/")
+        return "Nexcen's Page is here"
+    elif "open gmail" in user_input.lower():
+        open_application("Chrome", link="https://mail.google.com/mail/u/0/#inbox")
+        return "Gmail's open"
+    elif "open drive" in user_input.lower():
+        open_application("Chrome", link="https://drive.google.com/drive/u/0/my-drive")
+        return "Drive's open"
     elif "roblox" in user_input.lower():
         open_application("Roblox")
         return "Opening Roblox..."
@@ -66,6 +79,22 @@ def generate_response(user_input, api_key):
         return "Opening Outlook..."
     elif "how are you" in user_input.lower():
         return "I'm doing well, thank you!"
+    elif "remind me to" in user_input.lower():
+        try:
+            reminder_text = user_input.lower().replace("remind me to", "").strip()
+            parsed_datetime = parser.parse(reminder_text, fuzzy_with_tokens=True)
+
+            # Check if a valid future date and time were parsed
+            if parsed_datetime[0] and parsed_datetime[0] > datetime.datetime.now():
+                reminder_text = f"Reminder: {reminder_text} - {parsed_datetime[0].strftime('%Y-%m-%d %H:%M:%S')}"
+                response = add_reminder(reminder_text, reminders_file)
+            else:
+                response = "Invalid date or time. Please provide a future date and time for the reminder."
+
+        except ValueError:
+            response = "Invalid date or time format. Please provide a valid date and time for the reminder."
+
+        return response
     elif "what's your name" in user_input.lower():
         return "I am a voice assistant designed for Atul Shrivastava."
     elif "weather" in user_input.lower():
@@ -79,8 +108,34 @@ def generate_response(user_input, api_key):
         return "Goodbye! Have a great day."
     else:
         return "I didn't understand that."
+    
+def add_reminder(reminder, file_path='reminders.txt'):
+    try:
+        with open(file_path, 'a') as file:
+            file.write(reminder + '\n')
+        print("Reminder added successfully.")
+    except Exception as e:
+        print(f"Error adding reminder: {e}")
 
-def open_application(application_name):
+def read_reminders(file_path='reminders.txt'):
+    reminders = []
+    try:
+        with open(file_path, 'r') as file:
+            reminders = [line.strip() for line in file.readlines()]
+    except FileNotFoundError:
+        print(f"File '{file_path}' not found. No reminders loaded.")
+    return reminders
+
+
+def print_reminders(reminders):
+    if not reminders:
+        print("No reminders.")
+    else:
+        print("Reminders:")
+        for reminder in reminders:
+            print(reminder)
+
+def open_application(application_name, link=None):
     try:
         if application_name == "Spotify":
             os.startfile("C:\\Users\\karan\\AppData\\Roaming\\Spotify\\Spotify.exe")
@@ -89,7 +144,9 @@ def open_application(application_name):
         elif application_name == "Roblox":
             os.startfile("C:\\Users\\karan\\AppData\\Local\\Roblox\\Versions\\version-510663c9d33e4fd8\\RobloxPlayerBeta.exe")
         elif application_name == "Outlook":
-            os.startfile("C:\\Program Files\\Microsoft Office\\Office16\\OUTLOOK.exe")
+            os.startfile("outlook.exe")  # Adjust this based on the actual Outlook executable
+        elif link:
+            webbrowser.open(link, new=2)  # Open link in default web browser
     except Exception as e:
         print(f"Error opening {application_name}: {e}")
 
@@ -153,10 +210,27 @@ def get_weather(lat, lon, api_key):
             return f"Error: {data['message']}"
     except Exception as e:
         return f"Error: {e}"
+    
+def check_upcoming_reminders(reminders, minutes_before=15):
+    current_time = datetime.datetime.now()
+
+    for reminder in reminders:
+        # Extract the scheduled time from the reminder text
+        scheduled_time_str = reminder.split('-')[-1].strip()
+        
+        try:
+            scheduled_time = datetime.datetime.strptime(scheduled_time_str, '%Y-%m-%d %H:%M:%S')
+            time_difference = scheduled_time - current_time
+            
+            # Check if the reminder is scheduled within the next 'minutes_before' minutes
+            if 0 <= time_difference.total_seconds() <= minutes_before * 60:
+                speak(f"Upcoming reminder: {reminder}")
+        except ValueError:
+            print(f"Invalid date/time format in reminder: {reminder}")
 
 if __name__ == "__main__":
-    api_key = 'KEY CONTENT HERE'
-
+    api_key = 'c39e52218b15fbde02bc0d6cce878e1e'
+    reminders_file = 'reminders.txt'
     current_time = datetime.datetime.now().hour
    
     if 6 <= current_time < 12:
@@ -174,9 +248,21 @@ if __name__ == "__main__":
             user_input = recognize_speech(timeout=5)
             if user_input:
                 print("You said:", user_input)
+                if "read my reminders" in user_input.lower():
+                    reminders = read_reminders(reminders_file)
+                    speak("Here are your reminders:")
+                    for reminder in reminders:
+                        speak(reminder)
+                    continue  # Continue to the next iteration of the loop
+                
                 response = generate_response(user_input, api_key)
                 print("Porcupine:", response)
-                speak(response)
+
+                # Check if the response is not empty before trying to speak
+                if response:
+                    speak(response)
+                
+                check_upcoming_reminders(reminders)
 
                 if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
                     exit_program = True
@@ -188,3 +274,12 @@ if __name__ == "__main__":
                     open_application("Roblox")
                 elif "outlook" in user_input.lower():
                     open_application("Outlook")
+                elif "open google" in user_input.lower():
+                    open_application("Chrome", link="https://www.google.com/")
+                elif "open nexcen" in user_input.lower():
+                    open_application("Chrome", link="https://www.nexcenglobal.com/")
+                elif "open gmail" in user_input.lower():
+                    open_application("Chrome", link="https://mail.google.com/mail/u/0/#inbox")    
+                elif "open drive" in user_input.lower():
+                    open_application("Chrome", link="https://drive.google.com/drive/u/0/my-drive")
+                  
