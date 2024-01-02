@@ -9,9 +9,12 @@ import datetime
 import webbrowser
 from dateutil import parser
 import time
+import winsound
 
 WAKE_WORDS = ["hey porcupine", "play porcupine"]
 WAKE_WORD_THRESHOLD = 0.7
+SILENT_MODE = False 
+NOTIFICATION_SOUND_FILE = 'soft_chime.wav'  
 
 def recognize_wake_word():
     recognizer = sr.Recognizer()
@@ -29,7 +32,6 @@ def recognize_wake_word():
     except sr.RequestError as e:
         print(f"Could not request results; {e}")
         return False
-
 
 def recognize_speech(timeout=5, custom_energy_threshold=4000):
     recognizer = sr.Recognizer()
@@ -49,8 +51,8 @@ def recognize_speech(timeout=5, custom_energy_threshold=4000):
         print(f"Could not request results; {e}")
         return None
 
-
 def generate_response(user_input, api_key):
+    global SILENT_MODE  
     if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
         return "Seeya! Have a great day."
     elif "spotify" in user_input.lower():
@@ -79,6 +81,12 @@ def generate_response(user_input, api_key):
         return "Opening Outlook..."
     elif "how are you" in user_input.lower():
         return "I'm doing well, thank you!"
+    elif "go silent" in user_input.lower():
+        SILENT_MODE = True
+        return "Silent mode enabled."
+    elif "go loud" in user_input.lower():
+        SILENT_MODE = False
+        return "Loud mode enabled."
     elif "remind me to" in user_input.lower():
         try:
             reminder_text = user_input.lower().replace("remind me to", "").strip()
@@ -125,7 +133,6 @@ def read_reminders(file_path='reminders.txt'):
     except FileNotFoundError:
         print(f"File '{file_path}' not found. No reminders loaded.")
     return reminders
-
 
 def print_reminders(reminders):
     if not reminders:
@@ -215,18 +222,25 @@ def check_upcoming_reminders(reminders, minutes_before=15):
     current_time = datetime.datetime.now()
 
     for reminder in reminders:
-        # Extract the scheduled time from the reminder text
         scheduled_time_str = reminder.split('-')[-1].strip()
-        
+
         try:
             scheduled_time = datetime.datetime.strptime(scheduled_time_str, '%Y-%m-%d %H:%M:%S')
             time_difference = scheduled_time - current_time
-            
-            # Check if the reminder is scheduled within the next 'minutes_before' minutes
+
             if 0 <= time_difference.total_seconds() <= minutes_before * 60:
-                speak(f"Upcoming reminder: {reminder}")
+                if not SILENT_MODE:
+                    speak(f"Upcoming reminder: {reminder}")
+                else:
+                    play_notification_sound()
         except ValueError:
             print(f"Invalid date/time format in reminder: {reminder}")
+
+def play_notification_sound():
+    try:
+        winsound.PlaySound(NOTIFICATION_SOUND_FILE, winsound.SND_FILENAME)
+    except Exception as e:
+        print(f"Error playing notification sound: {e}")
 
 if __name__ == "__main__":
     api_key = 'c39e52218b15fbde02bc0d6cce878e1e'
