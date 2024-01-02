@@ -1,4 +1,3 @@
-import sys
 import speech_recognition as sr
 from gtts import gTTS
 import pygame
@@ -6,6 +5,27 @@ import io
 import os
 import geocoder
 import requests
+import datetime
+
+WAKE_WORD = "hey porcupine"  # Set your desired wake word
+WAKE_WORD_THRESHOLD = 0.7
+
+def recognize_wake_word():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening for wake word...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
+
+    try:
+        wake_word = recognizer.recognize_google(audio).lower()
+        print(f"Detected wake word: {wake_word}")
+        return wake_word.startswith(WAKE_WORD)
+    except sr.UnknownValueError:
+        return False
+    except sr.RequestError as e:
+        print(f"Could not request results; {e}")
+        return False
 
 def recognize_speech(timeout=5, custom_energy_threshold=4000):
     recognizer = sr.Recognizer()
@@ -22,25 +42,32 @@ def recognize_speech(timeout=5, custom_energy_threshold=4000):
         print("Could not understand audio")
         return None
     except sr.RequestError as e:
-        print(f"Could not request results; {0}".format(e))
+        print(f"Could not request results; {e}")
         return None
 
+
+
 def generate_response(user_input, api_key):
-    if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
+    if any(phrase in user_input for phrase in ["goodbye", "bye", "see you", "thank you", "thanks"]):
         return "Seeya! Have a great day."
     elif "spotify" in user_input.lower():
         open_application("Spotify")
         return "Opening Spotify..."
-    elif "chrome" in user_input.lower():
+    elif "hey porcupine" in user_input.lower():
+        return "Hey there, how can I be of service?"
+    elif any(word in user_input.lower() for word in ["chrome", "browser"]):
         open_application("Chrome")
         return "Opening Chrome..."
     elif "roblox" in user_input.lower():
         open_application("Roblox")
         return "Opening Roblox..."
+    elif any(word in user_input.lower() for word in ["mail", "email", "outlook"]):
+        open_application("Outlook")
+        return "Opening Outlook..."
     elif "how are you" in user_input.lower():
         return "I'm doing well, thank you!"
     elif "what's your name" in user_input.lower():
-        return "I am Ria. I am created by my legendary brother."
+        return "I am a voice assistant designed for Atul Shrivastava."
     elif "weather" in user_input.lower():
         user_city, user_country, user_location = get_user_location()
         if user_city and user_country and user_location:
@@ -61,6 +88,8 @@ def open_application(application_name):
             os.startfile("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
         elif application_name == "Roblox":
             os.startfile("C:\\Users\\karan\\AppData\\Local\\Roblox\\Versions\\version-510663c9d33e4fd8\\RobloxPlayerBeta.exe")
+        elif application_name == "Outlook":
+            os.startfile("C:\\Program Files\\Microsoft Office\\Office16\\OUTLOOK.exe")
     except Exception as e:
         print(f"Error opening {application_name}: {e}")
 
@@ -119,29 +148,43 @@ def get_weather(lat, lon, api_key):
             low_temp_celsius = round(low_temp - 273.15, 2)
 
             # Display the weather details for today
-            return f"Current Temperature: {current_temp_celsius} degree C\nWeather for today: High {high_temp_celsius} degree C, Low {low_temp_celsius} degree C"
+            return f"Current Temperature: {current_temp_celsius} degree Celsius\nWeather for today: High {high_temp_celsius} degree Celsius, Low {low_temp_celsius} degree Celsius"
         else:
             return f"Error: {data['message']}"
     except Exception as e:
         return f"Error: {e}"
 
 if __name__ == "__main__":
-    # Replace 'YOUR_OPENWEATHERMAP_API_KEY' with your actual OpenWeatherMap API key
-    api_key = 'c39e52218b15fbde02bc0d6cce878e1e'
+    api_key = 'KEY CONTENT HERE'
 
-    speak("Hey there! I'm Ria... How can I help you today?")
-    
+    current_time = datetime.datetime.now().hour
+   
+    if 6 <= current_time < 12:
+        speak("Good Morning Atul, ready to help!")
+    elif 12 <= current_time < 18:
+        speak("Good Afternoon Atul, here to make your day!")
+    else:
+        speak("Good Evening Atul, here to help!") 
+
     exit_program = False
     
     while not exit_program:
-        user_input = recognize_speech(timeout=5)
-        if user_input:
-            print("You said:", user_input)
-            response = generate_response(user_input, api_key)
-            print("Ria:", response)
-            speak(response)
+        if recognize_wake_word():
+            speak("How can I help?")
+            user_input = recognize_speech(timeout=5)
+            if user_input:
+                print("You said:", user_input)
+                response = generate_response(user_input, api_key)
+                print("Porcupine:", response)
+                speak(response)
 
-            if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
-                exit_program = True
-            elif "spotify" in user_input.lower():
-                open_application("Spotify")
+                if any(phrase in user_input for phrase in ["goodbye", "bye", "see you"]):
+                    exit_program = True
+                elif "spotify" in user_input.lower():
+                    open_application("Spotify")
+                elif "chrome" in user_input.lower():
+                    open_application("Chrome")
+                elif "roblox" in user_input.lower():
+                    open_application("Roblox")
+                elif "outlook" in user_input.lower():
+                    open_application("Outlook")
